@@ -1,15 +1,15 @@
 ;; SPDX-License-Identifier: AGPL-3.0-or-later
 ;; SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
-;; ECOSYSTEM.scm — template-repo
+;; ECOSYSTEM.scm — eclipse-ssg
 
 (ecosystem
   (version "1.0.0")
-  (name "template-repo")
-  (type "project")
-  (purpose "Project in the hyperpolymath ecosystem")
+  (name "eclipse-ssg")
+  (type "satellite")
+  (purpose "Satellite SSG implementation providing MCP protocol interface to 28+ static site generators")
 
   (position-in-ecosystem
-    "Part of hyperpolymath ecosystem. Follows RSR guidelines.")
+    "Satellite implementation in the hyperpolymath ecosystem. Synchronizes adapters from poly-ssg-mcp hub.")
 
   (related-projects
     (project
@@ -18,11 +18,21 @@
       (relationship "hub")
       (description "Unified MCP server for 28 SSGs - provides adapter interface")
       (differentiation
-        "poly-ssg-mcp = Hub with all SSG adapters via MCP
-         This project = Satellite SSG implementation using the hub"))
-    (project (name "rhodium-standard-repositories")
-             (url "https://github.com/hyperpolymath/rhodium-standard-repositories")
-             (relationship "standard")))
+        "poly-ssg-mcp = Central hub with all SSG adapters via MCP
+         eclipse-ssg = Satellite implementation consuming the hub adapters"))
+    (project
+      (name "rhodium-standard-repositories")
+      (url "https://github.com/hyperpolymath/rhodium-standard-repositories")
+      (relationship "standard")
+      (description "RSR compliance guidelines and templates")))
 
-  (what-this-is "Project in the hyperpolymath ecosystem")
-  (what-this-is-not "- NOT exempt from RSR compliance"))
+  (what-this-is
+    "A satellite SSG project that:
+     - Integrates 28 static site generator adapters from poly-ssg-mcp
+     - Provides unified CLI interface via MCP protocol
+     - Supports Rust, Haskell, Elixir, Julia, OCaml, Scheme, and more")
+
+  (what-this-is-not
+    "- NOT the canonical source for SSG adapters (that's poly-ssg-mcp)
+     - NOT a standalone SSG implementation
+     - NOT exempt from RSR compliance"))
