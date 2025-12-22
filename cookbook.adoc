@@ -1,0 +1,730 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
+= Eclipse-SSG Cookbook
+:toc: left
+:toclevels: 3
+:sectnums:
+:source-highlighter: rouge
+:icons: font
+
+[[introduction]]
+== Introduction
+
+This cookbook provides recipes for working with eclipse-ssg, the satellite SSG implementation in the hyperpolymath ecosystem. It covers CLI commands, Just recipes, Mustfile requirements, and Nickel configurations.
+
+[[quick-reference]]
+=== Quick Reference
+
+[cols="1,2,2"]
+|===
+| Tool | Purpose | Command
+
+| Just | Build automation | `just <recipe>`
+| Must | Mandatory checks | `must <recipe>`
+| Deno | Runtime | `deno <subcommand>`
+| Nickel | Configuration | `nickel eval <file>`
+|===
+
+---
+
+[[cli]]
+== CLI Commands
+
+[[cli-core]]
+=== Core Operations
+
+[[cli-build]]
+==== Building
+[source,bash]
+----
+# Full build
+deno task build
+
+# Watch mode
+deno task build --watch
+
+# Clean build
+rm -rf dist/ && deno task build
+----
+
+[[cli-test]]
+==== Testing
+[source,bash]
+----
+# Unit tests
+deno test --allow-read tests/
+
+# E2E tests
+deno test --allow-all tests/e2e/
+
+# With coverage
+deno test --coverage=coverage/ tests/
+deno coverage coverage/ --lcov > coverage/lcov.info
+----
+
+[[cli-format]]
+==== Formatting & Linting
+[source,bash]
+----
+# Format all files
+deno fmt
+
+# Check formatting
+deno fmt --check
+
+# Lint
+deno lint
+
+# Type check
+deno check **/*.ts
+----
+
+[[cli-adapters]]
+=== Adapter Operations
+
+[[cli-adapter-list]]
+==== Listing Adapters
+[source,bash]
+----
+# List all adapters
+ls -1 adapters/*.js | xargs -n1 basename | sed 's/.js$//'
+
+# Check adapter status
+deno run --allow-run adapters/zola.js --check
+----
+
+[[cli-adapter-build]]
+==== Building with Adapters
+[source,bash]
+----
+# Build with Zola
+deno run --allow-all adapters/zola.js build --path ./site
+
+# Build with Hakyll
+deno run --allow-all adapters/hakyll.js build
+
+# Parallel builds (requires GNU parallel)
+echo "zola,hakyll,cobalt" | tr ',' '\n' | parallel -j4 \
+    deno run --allow-all adapters/{}.js build
+----
+
+[[cli-adapter-matrix]]
+==== Adapter Matrix Operations
+[source,bash]
+----
+# Test all adapters
+for adapter in adapters/*.js; do
+    echo "Testing $(basename $adapter .js)..."
+    deno run --allow-run "$adapter" --version
+done
+
+# Build matrix: adapter × format
+for adapter in zola hakyll cobalt; do
+    for format in html json; do
+        deno run --allow-all adapters/$adapter.js build --format $format
+    done
+done
+----
+
+[[cli-noteg]]
+=== NoteG Language
+
+[[cli-noteg-compile]]
+==== Compiling
+[source,bash]
+----
+# Compile .noteg file
+deno run --allow-read --allow-write noteg-lang/src/compiler.ts input.noteg
+
+# Parse only (AST output)
+deno run --allow-read noteg-lang/src/parser.ts input.noteg
+
+# Interpret
+deno run --allow-read noteg-lang/src/interpreter.ts input.noteg
+----
+
+[[cli-noteg-lsp]]
+==== Language Server
+[source,bash]
+----
+# Start LSP server
+deno run --allow-all noteg-lang/src/lsp/server.ts
+
+# With stdio transport
+deno run --allow-all noteg-lang/src/lsp/server.ts --stdio
+
+# With TCP transport
+deno run --allow-all noteg-lang/src/lsp/server.ts --tcp --port 9999
+----
+
+[[cli-combinatorics]]
+=== CLI Combinatorics
+
+[[cli-permutations]]
+==== Command Permutations
+[source,bash]
+----
+# Generate all adapter + command combinations
+adapters=(zola hakyll cobalt ema)
+commands=(init build serve check)
+
+for a in "${adapters[@]}"; do
+    for c in "${commands[@]}"; do
+        echo "just build-adapter $a $c"
+    done
+done
+
+# Execute permutations
+for a in zola hakyll cobalt; do
+    for c in build check; do
+        just build-adapter "$a" "$c" || echo "Failed: $a $c"
+    done
+done
+----
+
+[[cli-concatenations]]
+==== Pipeline Concatenations
+[source,bash]
+----
+# Full CI pipeline
+just deps && just check && just test-all && just build
+
+# Release pipeline
+just clean && \
+just check && \
+just test-all && \
+just build && \
+just docs && \
+just release-prepare v1.0.0
+
+# Parallel adapter validation + build
+(just adapter-list | xargs -n1 -P4 just adapter-check) && \
+just build
+----
+
+---
+
+[[just]]
+== Just Recipes
+
+[[just-core]]
+=== Core Recipes
+
+[source,makefile]
+----
+# List all recipes
+just --list
+
+# Default (runs check)
+just
+
+# Build everything
+just build
+
+# Run tests
+just test
+just test-e2e
+just test-all
+----
+
+[[just-dev]]
+=== Development Recipes
+
+[source,makefile]
+----
+# Start dev server
+just serve
+just serve 3000  # custom port
+
+# Watch mode
+just watch
+
+# Clean
+just clean
+
+# Update dependencies
+just deps
+----
+
+[[just-quality]]
+=== Code Quality Recipes
+
+[source,makefile]
+----
+# Format
+just fmt
+just fmt-check
+
+# Lint
+just lint
+
+# Type check
+just typecheck
+
+# All checks
+just check
+----
+
+[[just-adapters]]
+=== Adapter Recipes
+
+[source,makefile]
+----
+# List adapters
+just adapter-list
+
+# Check specific adapter
+just adapter-check zola
+
+# Build with adapter
+just build-adapter zola ./my-site
+
+# Sync from hub
+just adapter-sync
+
+# Parallel execution
+just adapter-parallel zola,hakyll,cobalt build
+----
+
+[[just-noteg]]
+=== NoteG Recipes
+
+[source,makefile]
+----
+# Compile
+just compile input.noteg
+
+# Parse
+just noteg-parse input.noteg
+
+# Interpret
+just noteg-interpret input.noteg
+
+# Validate syntax
+just noteg-validate input.noteg
+
+# Start LSP
+just lsp
+----
+
+[[just-ci]]
+=== CI/CD Recipes
+
+[source,makefile]
+----
+# Run CI locally
+just ci
+
+# Generate coverage
+just coverage
+
+# Security scan
+just security-scan
+
+# Prepare release
+just release-prepare v1.0.0
+----
+
+[[just-container]]
+=== Container Recipes
+
+[source,makefile]
+----
+# Build container
+just container-build
+just container-build myimage:v1
+
+# Run container
+just container-run
+just container-run myimage:v1 build
+----
+
+[[just-hooks]]
+=== Hook Recipes
+
+[source,makefile]
+----
+# Install git hooks
+just hooks-install
+
+# Run pre-commit manually
+just hooks-pre-commit
+
+# Run pre-push manually
+just hooks-pre-push
+----
+
+---
+
+[[nickel]]
+== Nickel Configuration
+
+[[nickel-overview]]
+=== Overview
+
+Nickel provides type-safe configuration for eclipse-ssg. All `.ncl` files are in the `.nickel/` directory.
+
+[[nickel-build]]
+=== Build Configuration
+
+..nickel/build.ncl
+[source,nickel]
+----
+{
+  project = {
+    name = "eclipse-ssg",
+    version = "0.2.0",
+  },
+
+  build = {
+    output_dir = "dist",
+    minify = true,
+    source_maps = false,
+  },
+
+  adapters = {
+    enabled = ["zola", "hakyll", "cobalt"],
+    parallel = 4,
+  },
+
+  test = {
+    coverage_threshold = 70,
+    timeout_seconds = 300,
+  },
+}
+----
+
+[[nickel-config]]
+=== Site Configuration Schema
+
+..nickel/config.ncl
+[source,nickel]
+----
+let SiteConfig = {
+  title : String,
+  base_url : String,
+  language : String | default = "en",
+  theme : String | optional,
+  build : {
+    drafts : Bool | default = false,
+    future : Bool | default = false,
+  },
+} in
+
+{
+  validate : SiteConfig -> SiteConfig,
+  validate = fun config => config,
+
+  default_config : SiteConfig,
+  default_config = {
+    title = "My Site",
+    base_url = "https://example.com",
+    language = "en",
+    build = {
+      drafts = false,
+      future = false,
+    },
+  },
+}
+----
+
+[[nickel-adapters]]
+=== Adapter Configuration
+
+..nickel/adapters.ncl
+[source,nickel]
+----
+let Adapter = {
+  name : String,
+  language : String,
+  binary : String,
+  commands : {
+    init : String,
+    build : String,
+    serve : String,
+    check : String | optional,
+  },
+} in
+
+{
+  zola : Adapter,
+  zola = {
+    name = "Zola",
+    language = "Rust",
+    binary = "zola",
+    commands = {
+      init = "init",
+      build = "build",
+      serve = "serve",
+      check = "check",
+    },
+  },
+
+  hakyll : Adapter,
+  hakyll = {
+    name = "Hakyll",
+    language = "Haskell",
+    binary = "hakyll-site",
+    commands = {
+      init = "init",
+      build = "build",
+      serve = "watch",
+    },
+  },
+}
+----
+
+[[nickel-commands]]
+=== Nickel Commands
+
+[source,bash]
+----
+# Evaluate build config
+nickel eval .nickel/build.ncl
+
+# Export as JSON
+nickel export .nickel/config.ncl --format json
+
+# Type check all Nickel files
+find .nickel -name "*.ncl" -exec nickel typecheck {} \;
+
+# Via Just
+just nickel-build
+just nickel-config
+just nickel-check
+----
+
+---
+
+[[mustfile]]
+== Mustfile Requirements
+
+[[must-precommit]]
+=== Pre-Commit Requirements
+
+These checks *must* pass before any commit:
+
+[source,toml]
+----
+[must.pre-commit]
+requires = [
+    "format.check",
+    "lint.all",
+    "security.secrets",
+]
+----
+
+[[must-prepush]]
+=== Pre-Push Requirements
+
+[source,toml]
+----
+[must.pre-push]
+requires = [
+    "test.unit",
+    "build.verify",
+]
+----
+
+[[must-prerelease]]
+=== Pre-Release Requirements
+
+[source,toml]
+----
+[must.pre-release]
+requires = [
+    "test.all",
+    "security.full",
+    "docs.complete",
+    "coverage.threshold",
+]
+----
+
+---
+
+[[hooks]]
+== Hooks
+
+[[hooks-git]]
+=== Git Hooks
+
+Install with `just hooks-install`.
+
+[[hooks-pre-commit]]
+==== pre-commit
+[source,bash]
+----
+#!/bin/sh
+just fmt-check && just lint
+----
+
+[[hooks-pre-push]]
+==== pre-push
+[source,bash]
+----
+#!/bin/sh
+just test
+----
+
+[[hooks-session]]
+=== Session Hooks
+
+[[hooks-session-start]]
+==== SessionStart Hook
+
+For Claude Code integration, create `.claude/hooks/session-start.sh`:
+
+[source,bash]
+----
+#!/bin/bash
+# Verify environment
+just deps
+
+# Sync adapters
+just adapter-sync
+
+# Run quick validation
+just check
+----
+
+[[hooks-notification]]
+=== Notification Hooks
+
+Configure in `PLAYBOOK.scm`:
+
+[source,scheme]
+----
+(notification-hook
+  (trigger . "ci.complete")
+  (channels . ("github" "discord" "email"))
+  (on-success . #t)
+  (on-failure . #t))
+----
+
+---
+
+[[security]]
+== Security
+
+[[security-secrets]]
+=== Secret Scanning
+
+[source,bash]
+----
+# Check for exposed secrets
+grep -rE "(password|secret|api_key|token)\s*=\s*['\"][^'\"]+['\"]" \
+    --include="*.ts" --include="*.js" .
+
+# Via Mustfile
+must security.secrets
+----
+
+[[security-deps]]
+=== Dependency Auditing
+
+[source,bash]
+----
+# Check dependencies
+deno info --json deps.ts | jq '.modules'
+
+# Full security scan
+just security-scan
+----
+
+[[security-codeql]]
+=== CodeQL Analysis
+
+Configured in `.github/workflows/ci.yml` - runs automatically on push/PR.
+
+---
+
+[[ci-cd]]
+== CI/CD
+
+[[ci-local]]
+=== Running CI Locally
+
+[source,bash]
+----
+# Full CI pipeline
+just ci
+
+# Equivalent to:
+just deps && just check && just test-all && just build
+----
+
+[[ci-github]]
+=== GitHub Actions
+
+See `.github/workflows/ci.yml` for the complete pipeline.
+
+---
+
+[[a11y]]
+== Accessibility
+
+[[a11y-schemas]]
+=== Accessibility Schemas
+
+* BSL (British Sign Language) - `a11y/bsl.schema.json`
+* GSL (German Sign Language) - `a11y/gsl.schema.json`
+* ASL (American Sign Language) - `a11y/asl.schema.json`
+* Makaton - `a11y/makaton.schema.json`
+
+[[a11y-validation]]
+=== Validation
+
+[source,bash]
+----
+# Validate schemas
+just a11y-check
+
+# Generate report
+just a11y-report
+----
+
+---
+
+[[appendix]]
+== Appendix
+
+[[appendix-files]]
+=== Key Files
+
+[cols="1,2"]
+|===
+| File | Purpose
+
+| `Justfile` | Build automation recipes
+| `Mustfile` | Mandatory requirements
+| `.nickel/*.ncl` | Type-safe configuration
+| `PLAYBOOK.scm` | Operational runbooks
+| `AGENTIC.scm` | AI agent integration
+| `NEUROSYM.scm` | Neurosymbolic reasoning
+| `STATE.scm` | Project state tracking
+| `META.scm` | Architecture decisions
+| `ECOSYSTEM.scm` | Ecosystem positioning
+|===
+
+[[appendix-adapters]]
+=== Adapter Reference
+
+28 SSG adapters available:
+
+* *Rust*: Zola, Cobalt, mdBook
+* *Haskell*: Hakyll, Ema
+* *Elixir*: Serum, NimblePublisher, Tableau
+* *Julia*: Franklin, Documenter, StaticWebPages
+* *Clojure*: Cryogen, Perun, Babashka
+* *Racket*: Frog, Pollen
+* *Scala*: Laika, ScalaTex
+* *F#*: Fornax
+* *OCaml*: YOCaml
+* *Swift*: Publish
+* *Kotlin*: Orchid
+* *Nim*: Nimrod
+* *D*: Reggae
+* *Crystal*: Marmot
+* *Tcl*: Wub
+* *Common Lisp*: Coleslaw
+* *Erlang*: Zotonic
