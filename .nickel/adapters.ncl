@@ -104,10 +104,26 @@ let Adapter = {
     features = ["plugins", "themes", "live-reload"],
   },
 
+  # Pony SSGs
+  eclipse : Adapter,
+  eclipse = {
+    name = "Eclipse",
+    language = "Pony",
+    binary = "eclipse-ssg",
+    description = "Actor-model static site generator with reference capabilities",
+    commands = {
+      init = "init",
+      build = "build",
+      serve = "serve",
+      check = "check",
+    },
+    features = ["actors", "zero-copy", "incremental", "hot-reload", "reference-capabilities"],
+  },
+
   # All adapters list
   all = [
     "babashka", "cobalt", "coleslaw", "cryogen", "documenter",
-    "ema", "fornax", "franklin", "frog", "hakyll",
+    "eclipse", "ema", "fornax", "franklin", "frog", "hakyll",
     "laika", "marmot", "mdbook", "nimble-publisher", "nimrod",
     "orchid", "perun", "pollen", "publish", "reggae",
     "scalatex", "serum", "staticwebpages", "tableau", "wub",
@@ -133,5 +149,6 @@ let Adapter = {
     tcl = ["wub"],
     common_lisp = ["coleslaw"],
     erlang = ["zotonic"],
+    pony = ["eclipse"],
   },
 }
