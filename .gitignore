@@ -38,8 +38,9 @@ erl_crash.dump
 /Manifest.toml
 
 # ReScript
-/lib/bs/
+/lib/
 /.bsb.lock
+/.merlin
 
 # Python (SaltStack only)
 __pycache__/
